@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Drone Live View</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -59,7 +59,8 @@
       box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
       position: relative;
     }
-    /* Sliding Info Panel - Selalu di atas peta */
+
+    /* Sliding Info Panel */
     .info-panel {
       position: fixed;
       top: 0;
@@ -82,12 +83,52 @@
       font-size: 20px;
       cursor: pointer;
     }
+    /* Flight history styling */
+    #historyTitle {
+      margin-top: 20px;
+      font-size: 16px;
+    }
+    #session-list {
+      list-style: none;
+      padding: 0;
+      max-height: 150px;
+      overflow-y: auto;
+      margin-top: 5px;
+    }
+    #session-list li {
+      cursor: pointer;
+      padding: 6px;
+      border-bottom: 1px solid #ddd;
+    }
+    #session-list li:hover {
+      background-color: #f0f0f0;
+    }
+
+    /* Replay Controls */
+    #replay-controls {
+      margin-top: 10px;
+      display: none; /* default hidden, muncul saat ada data replay */
+    }
+    #replay-controls button {
+      margin-right: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    #replay-slider {
+      width: 100%;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <h1>Drone Live View</h1>
   <div id="search-container">
-    <input type="text" id="search-bar" placeholder="Search by drone ID or pilot name..." autocomplete="off">
+    <input
+      type="text"
+      id="search-bar"
+      placeholder="Search by drone ID or pilot name..."
+      autocomplete="off"
+    />
     <ul id="search-results" class="search-results"></ul>
   </div>
 
@@ -98,12 +139,23 @@
     <span class="close-btn" onclick="closePanel()">&times;</span>
     <h3>Drone Details</h3>
     <p id="details">Click on a drone to see details.</p>
+    
+    <h3 id="historyTitle" style="display: none;">Flight History</h3>
+    <ul id="session-list"></ul>
+
+    <!-- Replay Controls -->
+    <div id="replay-controls">
+      <button id="btn-start">Start</button>
+      <button id="btn-pause">Pause</button>
+      <button id="btn-stop">Stop</button>
+      <input type="range" id="replay-slider" value="0" min="0" step="1" />
+    </div>
   </div>
 
   <script>
-    const map = L.map('map').setView([0, 0], 2);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles © Esri'
+    const map = L.map("map").setView([0, 0], 2);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles © Esri",
     }).addTo(map);
 
     let markers = {};
@@ -111,27 +163,44 @@
     let selectedDroneId = null;
     let activeDrones = new Set();
 
+    // Variables for replay
+    let replayCoordinates = [];   // Menyimpan array koordinat
+    let replayMarker = null;      // Marker untuk animasi
+    let replayIndex = 0;          // Posisi indeks saat ini dalam replayCoordinates
+    let replayTimer = null;       // Timer untuk animasi
+    let replayPaused = false;     // Apakah replay dijeda
+
+    const btnStart = document.getElementById("btn-start");
+    const btnPause = document.getElementById("btn-pause");
+    const btnStop = document.getElementById("btn-stop");
+    const replaySlider = document.getElementById("replay-slider");
+    const replayControls = document.getElementById("replay-controls");
+
+    /**
+     * Memanggil API untuk mendapatkan drone aktif
+     */
     function fetchActiveDrones() {
-      fetch('/api/active_drones')
-        .then(response => response.json())
-        .then(drones => {
+      fetch("/api/active_drones")
+        .then((response) => response.json())
+        .then((drones) => {
           let newActiveDrones = new Set();
 
-          drones.forEach(drone => {
+          drones.forEach((drone) => {
             const { id, latitude, longitude, pilot } = drone;
             newActiveDrones.add(id);
 
             const droneIcon = L.icon({
-                iconUrl: 'droneview.png',  // Langsung mengacu ke file di folder static
-                iconSize: [40, 40],
-                iconAnchor: [20, 20],
-                popupAnchor: [0, -20]
+              iconUrl: "droneview.png",
+              iconSize: [40, 40],
+              iconAnchor: [20, 20],
+              popupAnchor: [0, -20],
             });
 
             if (!markers[id]) {
-              const marker = L.marker([latitude, longitude], { icon: droneIcon }).addTo(map)
+              const marker = L.marker([latitude, longitude], { icon: droneIcon })
+                .addTo(map)
                 .bindPopup(`Drone ID: ${id}<br>Pilot: ${pilot}`);
-              marker.on('click', (e) => {
+              marker.on("click", (e) => {
                 showDroneDetails(id);
                 e.originalEvent.stopPropagation();
               });
@@ -140,13 +209,14 @@
               markers[id].setLatLng([latitude, longitude]);
             }
 
+            // Jika drone ini sedang dipilih, perbarui detailnya
             if (id === selectedDroneId) {
               updateDroneDetails(id);
             }
           });
 
-          // Hapus drone yang tidak aktif dari peta
-          Object.keys(markers).forEach(id => {
+          // Hapus drone yang tidak lagi aktif
+          Object.keys(markers).forEach((id) => {
             if (!newActiveDrones.has(id)) {
               map.removeLayer(markers[id]);
               delete markers[id];
@@ -155,23 +225,38 @@
 
           activeDrones = newActiveDrones;
         })
-        .catch(error => console.error('Error fetching active drones:', error));
+        .catch((error) => console.error("Error fetching active drones:", error));
     }
 
+    /**
+     * Membuka panel info dan menampilkan data drone yang dipilih
+     */
     function showDroneDetails(droneId) {
       selectedDroneId = droneId;
       updateDroneDetails(droneId);
-      document.getElementById('infoPanel').classList.add('active');
+      document.getElementById("infoPanel").classList.add("active");
     }
 
+    /**
+     * Memanggil API /api/drone_logs/{droneId} untuk mendapatkan data history
+     * Menampilkan detail sesi terbaru, serta daftar sesi penerbangan
+     */
     function updateDroneDetails(droneId) {
       fetch(`/api/drone_logs/${droneId}`)
-        .then(response => response.json())
-        .then(data => {
-          const details = document.getElementById('details');
+        .then((response) => response.json())
+        .then((data) => {
+          const details = document.getElementById("details");
+          const historyTitle = document.getElementById("historyTitle");
+          const sessionList = document.getElementById("session-list");
+
+          sessionList.innerHTML = ""; // Kosongkan daftar sesi
+          replayControls.style.display = "none"; // Sembunyikan replay controls saat belum pilih sesi
+
           if (data.history && data.history.length > 0) {
+            // Tampilkan session terbaru
             const latestSession = data.history[data.history.length - 1];
             const latest = latestSession.data[latestSession.data.length - 1];
+
             details.innerHTML = `
               <b>ID:</b> ${droneId}<br>
               <b>Latitude:</b> ${latest.latitude}<br>
@@ -182,72 +267,207 @@
               <b>End Time:</b> ${latestSession.end_time || "In Flight"}<br>
             `;
 
+            // Gambar jalur session terakhir (merah)
             if (flightPaths[droneId]) {
               map.removeLayer(flightPaths[droneId]);
             }
+            const path = latestSession.data.map((d) => [d.latitude, d.longitude]);
+            flightPaths[droneId] = L.polyline(path, { color: "red" }).addTo(map);
 
-            const path = latestSession.data.map(d => [d.latitude, d.longitude]);
-            flightPaths[droneId] = L.polyline(path, { color: 'red' }).addTo(map);
+            historyTitle.style.display = "block";
+
+            // Tampilkan daftar sesi untuk dipilih
+            data.history.forEach((session, index) => {
+              const li = document.createElement("li");
+              li.textContent = `Session ${index + 1}: Start ${session.start_time} | End ${session.end_time || "In Flight"}`;
+              // Alih-alih langsung replay, kita simpan data sessi agar user bisa menekan Start/Stop/Pause
+              li.onclick = () => setupReplay(session);
+              sessionList.appendChild(li);
+            });
+          } else {
+            details.innerHTML = `<b>ID:</b> ${droneId}<br>No flight history available.`;
+            historyTitle.style.display = "none";
           }
         })
-        .catch(error => console.error('Error fetching drone logs:', error));
+        .catch((error) => console.error("Error fetching drone logs:", error));
     }
 
+    /**
+     * Mempersiapkan data replay (tanpa langsung mengeksekusi)
+     * Jalur akan diwarnai biru, user bisa Start/Pause/Stop
+     */
+    function setupReplay(session) {
+      if (!session.data || session.data.length === 0) {
+        console.error("No coordinates in this session for replay.");
+        return;
+      }
+
+      // Hapus flight path lama
+      if (flightPaths[selectedDroneId]) {
+        map.removeLayer(flightPaths[selectedDroneId]);
+      }
+
+      // Gambar jalur polyline (warna biru) untuk menandakan sesi replay
+      replayCoordinates = session.data.map((d) => [d.latitude, d.longitude]);
+      flightPaths[selectedDroneId] = L.polyline(replayCoordinates, { color: "blue" }).addTo(map);
+
+      // Reset state replay
+      replayIndex = 0;
+      replayPaused = false;
+      clearInterval(replayTimer);
+      replayTimer = null;
+
+      // Pasang marker ke koordinat awal
+      if (replayMarker) {
+        map.removeLayer(replayMarker);
+      }
+      replayMarker = L.marker(replayCoordinates[0]).addTo(map);
+
+      // Atur slider
+      const maxIndex = replayCoordinates.length - 1;
+      replaySlider.value = 0;
+      replaySlider.min = 0;
+      replaySlider.max = maxIndex;
+      replaySlider.step = 1;
+
+      // Tampilkan tombol replay
+      replayControls.style.display = "block";
+    }
+
+    /**
+     * Start replay: mengeksekusi animasi
+     */
+    function startReplay() {
+      if (!replayCoordinates || replayCoordinates.length === 0) return;
+      replayPaused = false;
+
+      if (!replayTimer) {
+        replayTimer = setInterval(() => {
+          if (!replayPaused) {
+            if (replayIndex < replayCoordinates.length) {
+              replayMarker.setLatLng(replayCoordinates[replayIndex]);
+              replaySlider.value = replayIndex;
+              replayIndex++;
+            } else {
+              // Habis, stop
+              stopReplay();
+            }
+          }
+        }, 500);
+      }
+    }
+
+    /**
+     * Pause replay
+     */
+    function pauseReplay() {
+      replayPaused = !replayPaused; // toggle pause
+    }
+
+    /**
+     * Stop replay dan reset ke awal
+     */
+    function stopReplay() {
+      clearInterval(replayTimer);
+      replayTimer = null;
+      replayIndex = 0;
+      if (replayMarker && replayCoordinates.length > 0) {
+        replayMarker.setLatLng(replayCoordinates[0]);
+      }
+      replaySlider.value = 0;
+    }
+
+    /**
+     * Slider manual
+     */
+    function onSliderChange(value) {
+      replayIndex = parseInt(value);
+      if (replayMarker && replayCoordinates.length > 0) {
+        replayMarker.setLatLng(replayCoordinates[replayIndex]);
+      }
+    }
+
+    /**
+     * Menutup panel info
+     */
     function closePanel() {
-      document.getElementById('infoPanel').classList.remove('active');
+      document.getElementById("infoPanel").classList.remove("active");
       removeFlightPath();
     }
 
+    /**
+     * Menghapus jalur flight path milik drone terpilih
+     */
     function removeFlightPath() {
       if (selectedDroneId && flightPaths[selectedDroneId]) {
         map.removeLayer(flightPaths[selectedDroneId]);
         delete flightPaths[selectedDroneId];
-        selectedDroneId = null;
       }
+      // Hapus replay marker
+      if (replayMarker) {
+        map.removeLayer(replayMarker);
+        replayMarker = null;
+      }
+      selectedDroneId = null;
     }
 
+    /**
+     * Mencari drone berdasarkan ID/pilot
+     */
     function searchDrones(query) {
-      const resultList = document.getElementById('search-results');
+      const resultList = document.getElementById("search-results");
 
       if (!query) {
-        resultList.innerHTML = '';
-        resultList.style.display = 'none';
+        resultList.innerHTML = "";
+        resultList.style.display = "none";
         return;
       }
 
       fetch(`/api/search?q=${query}`)
-        .then(response => response.json())
-        .then(results => {
-          resultList.innerHTML = '';
-          resultList.style.display = 'block';
+        .then((response) => response.json())
+        .then((results) => {
+          resultList.innerHTML = "";
+          resultList.style.display = "block";
 
-          results.forEach(drone => {
-            const item = document.createElement('li');
+          results.forEach((drone) => {
+            const item = document.createElement("li");
             item.textContent = `Drone: ${drone.drone_id} (Pilot: ${drone.pilot}) - ${drone.status}`;
             item.onclick = () => {
               showDroneDetails(drone.drone_id);
-              resultList.style.display = 'none';
+              resultList.style.display = "none";
             };
             resultList.appendChild(item);
           });
         })
-        .catch(error => console.error('Error searching drones:', error));
+        .catch((error) => console.error("Error searching drones:", error));
     }
 
-    document.getElementById('search-bar').addEventListener('input', (event) => {
+    // Event listeners
+    document.getElementById("search-bar").addEventListener("input", (event) => {
       searchDrones(event.target.value);
     });
-
-    document.getElementById('search-bar').addEventListener('blur', () => {
+    document.getElementById("search-bar").addEventListener("blur", () => {
       setTimeout(() => {
-        document.getElementById('search-results').style.display = 'none';
+        document.getElementById("search-results").style.display = "none";
       }, 200);
     });
 
-    map.on('click', () => {
+    // Tombol replay
+    document.getElementById("btn-start").addEventListener("click", startReplay);
+    document.getElementById("btn-pause").addEventListener("click", pauseReplay);
+    document.getElementById("btn-stop").addEventListener("click", stopReplay);
+
+    // Slider
+    document.getElementById("replay-slider").addEventListener("input", (e) => {
+      onSliderChange(e.target.value);
+    });
+
+    // Klik peta menutup panel
+    map.on("click", () => {
       closePanel();
     });
 
+    // Refresh data drone aktif setiap 3 detik
     setInterval(fetchActiveDrones, 3000);
   </script>
 </body>

@@ -2,7 +2,6 @@ package com.example.drone.model;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -20,7 +19,8 @@ public class FlightSession {
     private Drone drone;
 
     @OneToMany(mappedBy = "flightSession", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DroneData> telemetryData = new ArrayList<>();
+    @OrderBy("timestamp ASC") // Pastikan log disimpan berurutan berdasarkan timestamp
+    private List<DroneData> telemetryData;
 
     // Getter dan Setter
     public Long getId() {

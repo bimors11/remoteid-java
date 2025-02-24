@@ -1,7 +1,6 @@
 package com.example.drone.service;
 
 import com.example.drone.model.Drone;
-import com.example.drone.model.FlightSession;
 import com.example.drone.repository.DroneRepository;
 import com.example.drone.repository.FlightSessionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
