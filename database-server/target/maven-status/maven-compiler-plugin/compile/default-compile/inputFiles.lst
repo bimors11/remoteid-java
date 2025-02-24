@@ -1,0 +1,12 @@
+/home/bim/remoteid-java/src/main/java/com/example/drone/model/Pilot.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/repository/FlightSessionRepository.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/controller/DroneController.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/service/DroneStatusService.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/model/FlightSession.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/repository/DroneRepository.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/repository/DroneDataRepository.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/model/Drone.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/mqtt/MqttService.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/DroneApplication.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/repository/PilotRepository.java
+/home/bim/remoteid-java/src/main/java/com/example/drone/model/DroneData.java
