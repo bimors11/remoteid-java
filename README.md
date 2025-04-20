@@ -14,12 +14,16 @@ Dependecies:
 - MQTT Broker (Mosquitto)
 
 Run Database Server:
+```bash
 cd database-server
 mvn spring-boot:run
+```
 
 Run Livestream Server:
+```bash
 cd livestream-server
 mvn spring-boot:run
+```
 
 ## Struktur Proyek
 
