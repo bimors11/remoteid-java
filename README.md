@@ -28,6 +28,6 @@ mvn spring-boot:run
 
 Run esp32sim.py (install paho-mqtt dulu):
 ```bash
-sudo apt install python-paho-mqtt
+sudo apt install python3-paho-mqtt
 python3 esp32sim.py
 ```
