@@ -4,7 +4,7 @@ Sistem ini adalah implementasi awal dari **Remote ID Drone**, dibuat menggunakan
 
 - **`database-server/`**: Server backend, menyimpan data identitas drone dan operator, provide API.
 - **`livestream-server/`**: Dashboard livestream (ver 0.0.1)
-- **`esp32sim.py`**: Simulator data droone
+- **`esp32sim.py`**: Simulator data drone
 
 ---
 
