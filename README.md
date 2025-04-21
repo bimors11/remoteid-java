@@ -2,8 +2,9 @@
 
 Sistem ini adalah implementasi awal dari **Remote ID Drone**, dibuat menggunakan **Java + Spring Boot** untuk mendukung regulasi identifikasi drone secara jarak jauh (Remote ID) di Indonesia. Sistem terdiri dari dua bagian utama:
 
-- **`database-server/`**: Menyimpan data identitas drone dan operator.
-- **`livestream-server/`**: Menyiarkan data lokasi drone secara real-time.
+- **`database-server/`**: Server backend, menyimpan data identitas drone dan operator, provide API.
+- **`livestream-server/`**: Dashboard livestream (ver 0.0.1)
+- **`esp32sim.py`**: Simulator data droone
 
 ---
 
@@ -25,10 +26,8 @@ cd livestream-server
 mvn spring-boot:run
 ```
 
-## Struktur Proyek
-
+Run esp32sim.py (install paho-mqtt dulu):
 ```bash
-remoteid-java/
-├── database-server/       # REST API + penyimpanan data
-├── livestream-server/     # Server untuk kirim data lokasi real-time
-└── README.md              # Dokumentasi proyek
+sudo apt install python-paho-mqtt
+python3 esp32sim.py
+```
